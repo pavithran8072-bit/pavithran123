@@ -1,11 +1,89 @@
 import { getDaysRemaining } from './dateHelpers';
 
 /**
- * Calculates priority weight for a subject based on:
- * 1. Exam proximity (closer = higher weight)
- * 2. Previous mark (lower = higher weight)
- * 3. Difficulty (High = 3, Med = 2, Low = 1)
- * 4. Upcoming assignment deadlines
+ * @typedef {Object} Topic
+ * @property {string} id - Unique topic identifier
+ * @property {string} name - Name/title of the topic
+ * @property {boolean} completed - Whether topic is completed
+ * @property {'High'|'Medium'|'Low'} [difficulty] - Topic difficulty rating
+ */
+
+/**
+ * @typedef {Object} Subject
+ * @property {string} id - Unique subject identifier
+ * @property {string} name - Subject title (e.g., 'Mathematics')
+ * @property {number} previousMark - Past academic percentage (0 - 100)
+ * @property {'High'|'Medium'|'Low'} difficulty - Inherent subject difficulty
+ * @property {string} examDate - ISO format target exam date (YYYY-MM-DD)
+ * @property {number} [progress] - Curriculum completion percentage (0 - 100)
+ * @property {Topic[]} [topics] - Array of curriculum topics
+ * @property {string[]} [difficultTopics] - Identified troublesome topics
+ */
+
+/**
+ * @typedef {Object} Assignment
+ * @property {string} id - Assignment unique ID
+ * @property {string} subjectId - Related subject ID
+ * @property {string} subjectName - Name of the subject
+ * @property {string} title - Assignment title or task name
+ * @property {string} deadline - Due date (YYYY-MM-DD)
+ * @property {boolean} completed - Completion status
+ */
+
+/**
+ * @typedef {Object} Task
+ * @property {string} id - Task identifier
+ * @property {string} [subjectId] - Optional associated subject ID
+ * @property {string} subject - Display subject or category name
+ * @property {string} topic - Session objective or topic name
+ * @property {string} startTime - Formatted 12-hour clock start (e.g., '6:00 PM')
+ * @property {string} endTime - Formatted 12-hour clock end (e.g., '7:00 PM')
+ * @property {number} duration - Session duration in minutes
+ * @property {'High Priority'|'Medium Priority'|'Low Priority'} priority - Priority category
+ * @property {boolean} completed - Task completion checkbox state
+ * @property {'study'|'revision'|'assignment'|'break'} type - Semantic session category
+ * @property {boolean} [isBreak] - Flag indicating health/relaxation interval
+ * @property {boolean} [missed] - Flag indicating task was rescheduled by AI
+ * @property {boolean} [earlyFinished] - Flag indicating task was finished early
+ * @property {string} [notes] - AI instructional notes or diagnostic tips
+ */
+
+/**
+ * Computes a deterministic multi-factor priority weight for an academic subject.
+ * 
+ * Mathematical Formulation:
+ * PriorityScore = ProximityScore + WeaknessScore + DifficultyScore + AssignmentBoost
+ * 
+ * Score Components:
+ * 1. Proximity Score (0 to 40 pts):
+ *    - Exam in <= 3 days: 40 pts
+ *    - Exam in <= 7 days: 32 pts
+ *    - Exam in <= 14 days: 22 pts
+ *    - Exam in <= 30 days: 14 pts
+ *    - Exam > 30 days: 10 pts
+ * 
+ * 2. Weakness Recovery Score (0 to 30 pts):
+ *    - Computed as Math.round((100 - previousMark) * 0.35)
+ *    - Inversely proportional to past marks to prioritize recovery in struggling domains.
+ * 
+ * 3. Difficulty Score (5 to 25 pts):
+ *    - 'High': 25 pts
+ *    - 'Medium': 15 pts
+ *    - 'Low': 5 pts
+ * 
+ * 4. Assignment Urgency Boost (0 or 15 pts):
+ *    - Adds 15 bonus points if an active assignment for this subject is due within 3 days.
+ * 
+ * Complexity: O(A) where A is the count of active assignments.
+ * 
+ * @param {Subject} subject - The subject entity to evaluate
+ * @param {Assignment[]} [assignments=[]] - List of active student assignments
+ * @returns {{
+ *   subject: Subject,
+ *   score: number,
+ *   daysUntilExam: number,
+ *   urgencyLevel: 'Critical'|'High'|'Medium'|'Low'
+ * }} Object containing evaluated priority score and urgency category.
  */
 export function calculateSubjectPriority(subject, assignments = []) {
   const daysUntilExam = getDaysRemaining(subject.examDate);
@@ -47,7 +125,27 @@ export function calculateSubjectPriority(subject, assignments = []) {
 }
 
 /**
- * Generates an optimized AI daily schedule
+ * Generates an optimized daily study schedule tailored to student constraints.
+ * 
+ * Scheduling Algorithm:
+ * 1. Ranks all enrolled subjects by their computed PriorityScore descending.
+ * 2. Selects the primary focus subject (highest priority) and secondary subject.
+ * 3. Maps the student's preferred study window (Morning, Afternoon, Evening, Night) to clock hours.
+ * 4. Schedules a 60-minute deep work block for the primary subject.
+ * 5. Interleaves a mandatory 15-minute health/rest interval to prevent cognitive overload.
+ * 6. Schedules a 40-50 minute secondary focus block.
+ * 7. Adds a secondary 10-minute break for sessions with >= 3 daily hours.
+ * 8. Schedules a 30-minute high-yield active recall / spaced repetition block.
+ * 
+ * Complexity: O(N log N) where N is the count of enrolled subjects (dominated by sorting).
+ * 
+ * @param {Object} profile - Student profile configuration
+ * @param {string} profile.name - Student's name
+ * @param {number} profile.dailyHours - Daily allocated study hours
+ * @param {'Morning'|'Afternoon'|'Evening'|'Night'} profile.preferredTime - Peak study window
+ * @param {Subject[]} subjects - Enrolled curriculum subjects
+ * @param {Assignment[]} [assignments=[]] - Active assignments
+ * @returns {Task[]} Ordered array of scheduled study sessions and breaks
  */
 export function generateSchedule(profile, subjects, assignments = []) {
   if (!subjects || subjects.length === 0) return [];
@@ -189,10 +287,13 @@ export function generateSchedule(profile, subjects, assignments = []) {
 }
 
 /**
- * Dynamic adjustments
+ * Dynamically rebalances schedule when a scheduled session is missed.
+ * Immutably returns an updated schedule with diagnostic guidance for recovery.
+ * 
+ * @param {Task[]} tasks - Current active daily tasks
+ * @param {string} missedTaskId - The unique ID of the missed task
+ * @returns {Task[]} Updated tasks with reassigned priority instructions
  */
-
-// 1. Missed study session: Rebalances schedule
 export function handleMissedSession(tasks, missedTaskId) {
   return tasks.map(t => {
     if (t.id === missedTaskId) {
@@ -206,7 +307,14 @@ export function handleMissedSession(tasks, missedTaskId) {
   });
 }
 
-// 2. Early Topic Completion: Gives reward break or promotes revision
+/**
+ * Dynamically updates task when a student completes a topic earlier than expected.
+ * Awards early-finish bonus flag and positive cognitive reinforcement.
+ * 
+ * @param {Task[]} tasks - Current active daily tasks
+ * @param {string} completedTaskId - ID of the completed task
+ * @returns {Task[]} Updated tasks list
+ */
 export function handleEarlyCompletion(tasks, completedTaskId) {
   return tasks.map(t => {
     if (t.id === completedTaskId) {
@@ -221,7 +329,14 @@ export function handleEarlyCompletion(tasks, completedTaskId) {
   });
 }
 
-// 3. New Assignment Added: Injects prep task
+/**
+ * Inserts a dedicated deadline-buffer study session into the current schedule
+ * upon creation of a new urgent assignment.
+ * 
+ * @param {Task[]} tasks - Current active daily tasks
+ * @param {Assignment} newAssignment - The newly created assignment
+ * @returns {Task[]} New array with injected buffer session
+ */
 export function handleAddAssignmentToSchedule(tasks, newAssignment) {
   const newTask = {
     id: `task-asg-${Date.now()}`,
