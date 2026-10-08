@@ -18,7 +18,7 @@
  * 4. Modal & View Navigation Routing:
  *    - Primary tabs ('home', 'login', 'planner', 'subjects', 'progress', 'assistant', 'profile')
  *    - Sub-views ('today' vs 'calendar')
- *    - Modals (PlanGeneratorModal, PomodoroTimer, TaskModal, NotificationsDrawer)
+ *    - Modals (AuthModal, PlanGeneratorModal, PomodoroTimer, TaskModal, NotificationsDrawer)
  */
 
 import React, { useState, useEffect } from 'react';
@@ -28,6 +28,7 @@ import NotificationsDrawer from './components/layout/NotificationsDrawer';
 
 // Auth components
 import LoginPage from './components/auth/LoginPage';
+import AuthModal from './components/auth/AuthModal';
 
 // Home components
 import HeroSection from './components/home/HeroSection';
@@ -70,6 +71,10 @@ export default function App() {
 
   // Auth Session
   const [authSession, setAuthSession] = useState(() => Storage.getAuthSession());
+
+  // Popup Modal Authentication: starts open on website launch
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(true);
+  const [authModalMode, setAuthModalMode] = useState('login'); // 'login' | 'signup'
 
   // Core Data
   const [student, setStudent] = useState(() => Storage.getProfile());
@@ -144,6 +149,7 @@ export default function App() {
       preferredTime: userData.preferredTime || prev.preferredTime,
       level: userData.role || prev.level
     }));
+    setIsAuthModalOpen(false);
     showToast(`Welcome back, ${userData.name}!`);
     setActiveTab('planner');
   };
@@ -152,7 +158,13 @@ export default function App() {
     const session = Storage.logout();
     setAuthSession(session);
     showToast("Signed out successfully.");
-    setActiveTab('login');
+    setAuthModalMode('login');
+    setIsAuthModalOpen(true);
+  };
+
+  const handleOpenLogin = (mode = 'login') => {
+    setAuthModalMode(mode);
+    setIsAuthModalOpen(true);
   };
 
   // Unread notification count
@@ -427,7 +439,7 @@ export default function App() {
         currentUser={authSession?.user || student}
         isAuthenticated={isUserAuthenticated}
         onLogout={handleLogout}
-        onOpenLogin={() => setActiveTab('login')}
+        onOpenLogin={() => handleOpenLogin('login')}
       />
 
       {/* Notifications Drawer */}
@@ -452,7 +464,7 @@ export default function App() {
               <span>You are viewing preview data. Sign in to save and sync your personal study schedule.</span>
             </div>
             <button
-              onClick={() => setActiveTab('login')}
+              onClick={() => handleOpenLogin('login')}
               className="px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shrink-0 shadow-sm transition-all"
             >
               Sign In / Register
@@ -460,7 +472,7 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 0: LOGIN & CREATE ACCOUNT */}
+        {/* TAB 0: LOGIN & CREATE ACCOUNT PAGE */}
         {activeTab === 'login' && (
           <LoginPage
             onLogin={handleLogin}
@@ -604,11 +616,19 @@ export default function App() {
             }}
             onResetDefaultData={handleResetDefaultData}
             onLogout={handleLogout}
-            onSwitchAccount={() => setActiveTab('login')}
+            onSwitchAccount={() => handleOpenLogin('login')}
           />
         )}
 
       </main>
+
+      {/* POPUP AUTH MODAL (Opens immediately on website launch and on demand) */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onLogin={handleLogin}
+        initialMode={authModalMode}
+      />
 
       {/* Modals */}
       <PlanGeneratorModal

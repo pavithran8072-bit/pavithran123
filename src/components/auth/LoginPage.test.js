@@ -69,4 +69,23 @@ describe('Auth & LoginPage Core Logic - Unit Tests', () => {
     expect(session.isAuthenticated).toBe(false);
     expect(session.user).toBeNull();
   });
+
+  it('should support dynamic registration of new student accounts', () => {
+    const newStudent = {
+      id: 'user-new-99',
+      name: 'Sarah Connor',
+      email: 'sarah@mit.edu',
+      role: 'Junior Undergrad',
+      academicGoal: 'Ace Robotics & AI Exams',
+      dailyHours: 5,
+      preferredTime: 'Morning'
+    };
+
+    const session = Storage.login(newStudent);
+    expect(session.isAuthenticated).toBe(true);
+    expect(session.user.name).toBe('Sarah Connor');
+    expect(session.user.email).toBe('sarah@mit.edu');
+    expect(session.user.dailyHours).toBe(5);
+  });
 });
+
