@@ -69,12 +69,45 @@ describe('Storage Layer - Unit Tests', () => {
     });
   });
 
+  describe('Authentication & Session Operations', () => {
+    it('should return default authenticated session when storage is empty', () => {
+      const session = Storage.getAuthSession();
+      expect(session.isAuthenticated).toBe(true);
+      expect(session.user.name).toBe(initialStudentProfile.name);
+    });
+
+    it('should save and retrieve custom auth session', () => {
+      const newSession = {
+        isAuthenticated: true,
+        user: { name: 'Hermione Granger', email: 'hermione@hogwarts.edu' }
+      };
+      Storage.saveAuthSession(newSession);
+      expect(Storage.getAuthSession()).toEqual(newSession);
+    });
+
+    it('should log in a user and set isAuthenticated to true', () => {
+      const user = { name: 'John Doe', email: 'john@example.com' };
+      const res = Storage.login(user);
+      expect(res.isAuthenticated).toBe(true);
+      expect(res.user.name).toBe('John Doe');
+      expect(Storage.getAuthSession().isAuthenticated).toBe(true);
+    });
+
+    it('should log out a user and set isAuthenticated to false', () => {
+      Storage.logout();
+      const session = Storage.getAuthSession();
+      expect(session.isAuthenticated).toBe(false);
+      expect(session.user).toBeNull();
+    });
+  });
+
   describe('resetToDefault() Mechanism', () => {
     it('should reset all storage keys to initial defaults', () => {
       // Modify store first
       Storage.saveProfile({ name: 'Tampered Name' });
       Storage.saveSubjects([]);
       Storage.saveTasks([]);
+      Storage.logout();
 
       // Reset
       Storage.resetToDefault();
@@ -85,6 +118,8 @@ describe('Storage Layer - Unit Tests', () => {
       expect(Storage.getAssignments()).toEqual(initialAssignments);
       expect(Storage.getTasks()).toEqual(initialTodayTasks);
       expect(Storage.getNotifications()).toEqual(initialNotifications);
+      expect(Storage.getAuthSession().isAuthenticated).toBe(true);
+      expect(Storage.getAuthSession().user.name).toBe(initialStudentProfile.name);
     });
   });
 });

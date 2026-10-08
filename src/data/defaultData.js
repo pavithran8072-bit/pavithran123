@@ -242,3 +242,29 @@ export const motivationalQuotes = [
   { quote: "The secret to getting ahead is getting started.", author: "Mark Twain" },
   { quote: "You don't have to be extreme, just consistent.", author: "Anonymous" }
 ];
+
+export const demoAccounts = [
+  {
+    id: "demo-alex",
+    name: "Alex Rivera",
+    email: "alex.rivera@university.edu",
+    role: "Senior Undergrad",
+    academicGoal: "Score >90% in Semester Finals & Build Solid Fundamentals",
+    dailyHours: 4,
+    preferredTime: "Evening",
+    level: "Senior Undergrad",
+    targetExamScore: 90
+  },
+  {
+    id: "demo-maya",
+    name: "Maya Patel",
+    email: "maya.patel@medschool.edu",
+    role: "Pre-Med Student",
+    academicGoal: "Score 515+ on MCAT & Master Organic Chemistry",
+    dailyHours: 5,
+    preferredTime: "Morning",
+    level: "Pre-Med Junior",
+    targetExamScore: 95
+  }
+];
+

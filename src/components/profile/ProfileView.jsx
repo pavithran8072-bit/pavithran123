@@ -8,10 +8,13 @@ import {
   Award, 
   RotateCcw, 
   Save, 
-  Sparkles,
-  Flame,
-  CheckCircle2,
-  Calendar
+  Sparkles, 
+  Flame, 
+  CheckCircle2, 
+  Calendar,
+  LogOut,
+  ShieldCheck,
+  ArrowRightLeft
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -19,7 +22,9 @@ export default function ProfileView({
   student = {}, 
   subjects = [], 
   onUpdateProfile, 
-  onResetDefaultData 
+  onResetDefaultData,
+  onLogout,
+  onSwitchAccount
 }) {
   const [formData, setFormData] = useState({
     name: student.name || 'Alex Rivera',
@@ -69,7 +74,7 @@ export default function ProfileView({
               {formData.name}
             </h3>
             <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
-              Senior Undergrad
+              {student.level || 'Senior Undergrad'}
             </span>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -92,6 +97,28 @@ export default function ProfileView({
             </span>
           </div>
         </div>
+
+        {/* Quick Auth Actions */}
+        <div className="flex sm:flex-col gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={onSwitchAccount}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 transition-colors"
+            title="Switch student profile"
+          >
+            <ArrowRightLeft className="w-3.5 h-3.5 text-indigo-500" />
+            <span>Switch Account</span>
+          </button>
+          <button
+            type="button"
+            onClick={onLogout}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-rose-200 dark:border-rose-900/60 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-semibold text-rose-600 dark:text-rose-400 transition-colors"
+            title="Sign out of current profile"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Sign Out</span>
+          </button>
+        </div>
       </div>
 
       {/* Profile Form */}
@@ -102,79 +129,85 @@ export default function ProfileView({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
-              Full Name
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+              Student Full Name
             </label>
             <input
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-              required
+              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-white text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
-              Email Address
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+              Registered Student Email
             </label>
             <input
               type="email"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-              required
+              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-white text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
-            Academic Goal
+          <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+            Primary Academic Goal & Objective
           </label>
           <input
             type="text"
             value={formData.academicGoal}
             onChange={(e) => setFormData({ ...formData, academicGoal: e.target.value })}
-            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-            placeholder="e.g. Score >90% in Semester Finals"
-            required
+            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-white text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
           />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
-            <div className="flex justify-between text-xs font-semibold mb-1">
-              <span className="text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                Daily Study Hours Target
-              </span>
-              <span className="text-indigo-600 dark:text-indigo-400 font-bold">{formData.dailyHours}h / day</span>
-            </div>
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+              Target Daily Hours (hrs/day)
+            </label>
             <input
-              type="range"
-              min="1"
-              max="10"
-              step="0.5"
+              type="number"
+              min={1}
+              max={12}
               value={formData.dailyHours}
               onChange={(e) => setFormData({ ...formData, dailyHours: Number(e.target.value) })}
-              className="w-full accent-indigo-600 cursor-pointer"
+              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-white text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
-              Preferred Study Time
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+              Preferred Study Peak Period
             </label>
             <select
               value={formData.preferredTime}
               onChange={(e) => setFormData({ ...formData, preferredTime: e.target.value })}
-              className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-white text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
             >
-              <option value="Morning">Morning (8:00 AM – 12:00 PM)</option>
-              <option value="Afternoon">Afternoon (2:00 PM – 6:00 PM)</option>
-              <option value="Evening">Evening (6:00 PM – 10:00 PM)</option>
-              <option value="Night">Night (8:00 PM – 12:00 AM)</option>
+              <option value="Morning">Morning (8 AM - 12 PM)</option>
+              <option value="Afternoon">Afternoon (1 PM - 5 PM)</option>
+              <option value="Evening">Evening (6 PM - 10 PM)</option>
+              <option value="Night">Night (10 PM - 2 AM)</option>
             </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+              Target Final Exam Score (%)
+            </label>
+            <input
+              type="number"
+              min={50}
+              max={100}
+              value={formData.targetExamScore}
+              onChange={(e) => setFormData({ ...formData, targetExamScore: Number(e.target.value) })}
+              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-white text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            />
           </div>
         </div>
 

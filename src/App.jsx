@@ -4,6 +4,7 @@
  * 
  * Orchestrates:
  * 1. Reactive State Management:
+ *    - User Authentication Session (Student account, login state, role)
  *    - Student Profile (daily hours, exam goal, time preferences)
  *    - Enrolled Subjects & Syllabi (progress, marks, difficulty, exam dates)
  *    - Assignments & Deadlines
@@ -15,7 +16,7 @@
  * 3. Dynamic Re-planning Pipeline:
  *    - Trigger-based schedule readjustments (Missed sessions, shifted exams, early topic completions, urgent assignments).
  * 4. Modal & View Navigation Routing:
- *    - Primary tabs ('home', 'planner', 'subjects', 'progress', 'assistant', 'profile')
+ *    - Primary tabs ('home', 'login', 'planner', 'subjects', 'progress', 'assistant', 'profile')
  *    - Sub-views ('today' vs 'calendar')
  *    - Modals (PlanGeneratorModal, PomodoroTimer, TaskModal, NotificationsDrawer)
  */
@@ -24,6 +25,9 @@ import React, { useState, useEffect } from 'react';
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
 import NotificationsDrawer from './components/layout/NotificationsDrawer';
+
+// Auth components
+import LoginPage from './components/auth/LoginPage';
 
 // Home components
 import HeroSection from './components/home/HeroSection';
@@ -61,8 +65,11 @@ export default function App() {
   // Theme state: reads persisted preference or defaults to light
   const [isDarkMode, setIsDarkMode] = useState(() => Storage.getTheme() === 'dark');
 
-  // Active Navigation Tab ('home' | 'planner' | 'subjects' | 'progress' | 'assistant' | 'profile')
+  // Active Navigation Tab ('home' | 'login' | 'planner' | 'subjects' | 'progress' | 'assistant' | 'profile')
   const [activeTab, setActiveTab] = useState('home');
+
+  // Auth Session
+  const [authSession, setAuthSession] = useState(() => Storage.getAuthSession());
 
   // Core Data
   const [student, setStudent] = useState(() => Storage.getProfile());
@@ -123,6 +130,30 @@ export default function App() {
   useEffect(() => {
     Storage.saveNotifications(notifications);
   }, [notifications]);
+
+  // Auth handlers
+  const handleLogin = (userData) => {
+    const session = Storage.login(userData);
+    setAuthSession(session);
+    setStudent(prev => ({
+      ...prev,
+      name: userData.name || prev.name,
+      email: userData.email || prev.email,
+      academicGoal: userData.academicGoal || prev.academicGoal,
+      dailyHours: userData.dailyHours || prev.dailyHours,
+      preferredTime: userData.preferredTime || prev.preferredTime,
+      level: userData.role || prev.level
+    }));
+    showToast(`Welcome back, ${userData.name}!`);
+    setActiveTab('planner');
+  };
+
+  const handleLogout = () => {
+    const session = Storage.logout();
+    setAuthSession(session);
+    showToast("Signed out successfully.");
+    setActiveTab('login');
+  };
 
   // Unread notification count
   const unreadNotificationsCount = notifications.filter(n => n.unread).length;
@@ -198,14 +229,8 @@ export default function App() {
 
   // ========================================================
   // Dynamic Re-planning Simulations & Reactive Triggers
-  // Illustrates real-time adaptation engine behavior
   // ========================================================
 
-  /**
-   * Simulation 1: Missed Session Recovery
-   * Marks current active uncompleted task as missed and schedules recovery notes.
-   * Generates a real-time notification informing the student of timetable rebalancing.
-   */
   const handleSimulateMissedSession = () => {
     const uncompleted = tasks.find(t => !t.isBreak && !t.completed);
     if (uncompleted) {
@@ -225,13 +250,7 @@ export default function App() {
     }
   };
 
-  /**
-   * Simulation 2: Exam Date Shift (High Proximity Urgency)
-   * Simulates moving an exam (e.g. Mathematics) to 3 days remaining.
-   * Automatically invokes generateSchedule to regenerate and prioritize high-stakes subject blocks.
-   */
   const handleSimulateExamChange = () => {
-    // Push Mathematics exam closer: 3 days remaining
     const updatedSubjects = subjects.map(s => {
       if (s.name.toLowerCase().includes('math')) {
         return { ...s, examDate: getDateOffset(3) };
@@ -240,7 +259,6 @@ export default function App() {
     });
     setSubjects(updatedSubjects);
 
-    // Regenerate daily schedule with boosted priority
     const newSchedule = generateSchedule(student, updatedSubjects, assignments);
     setTasks(newSchedule);
 
@@ -256,11 +274,6 @@ export default function App() {
     showToast("⚡ Mathematics exam moved to 3 days! AI automatically boosted Math priority.");
   };
 
-  /**
-   * Simulation 3: Immediate Assignment Insertion
-   * Simulates sudden addition of an urgent assignment deadline.
-   * Injects a dedicated 45-minute buffer block directly into today's evening schedule.
-   */
   const handleSimulateNewAssignment = () => {
     const newAsg = {
       id: `asg-${Date.now()}`,
@@ -287,10 +300,6 @@ export default function App() {
     showToast(`New assignment added! Dedicated 45m prep block scheduled.`);
   };
 
-  /**
-   * Simulation 4: Early Task Finish (Positive Reinforcement)
-   * Marks active task as finished early and awards a bonus flag and celebratory confetti.
-   */
   const handleSimulateEarlyFinish = () => {
     const activeStudyTask = tasks.find(t => !t.isBreak && !t.completed);
     if (activeStudyTask) {
@@ -309,7 +318,6 @@ export default function App() {
     showToast("Schedule re-optimized by AI engine!");
   };
 
-  // AI Plan Generation Callback
   const handleGeneratePlanCallback = ({ profile: newProfile, subjects: newSubjects }) => {
     setStudent(newProfile);
     setSubjects(newSubjects);
@@ -320,7 +328,6 @@ export default function App() {
     showToast("🎉 Personalized AI Study Plan generated successfully!");
   };
 
-  // AI Assistant Plan Adjustment
   const handleApplyAssistantPlan = (actionType) => {
     if (actionType === 'apply_2hr') {
       const mathSub = subjects.find(s => s.name.toLowerCase().includes('math')) || subjects[0];
@@ -381,7 +388,6 @@ export default function App() {
     }
   };
 
-  // Reset to default sample demo data
   const handleResetDefaultData = () => {
     Storage.resetToDefault();
     setStudent(Storage.getProfile());
@@ -389,8 +395,11 @@ export default function App() {
     setAssignments(Storage.getAssignments());
     setTasks(Storage.getTasks());
     setNotifications(Storage.getNotifications());
+    setAuthSession(Storage.getAuthSession());
     showToast("Reset to pristine demonstration data!");
   };
+
+  const isUserAuthenticated = authSession?.isAuthenticated ?? true;
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-200">
@@ -415,6 +424,10 @@ export default function App() {
         unreadNotificationsCount={unreadNotificationsCount}
         toggleNotifications={() => setIsNotificationsOpen(!isNotificationsOpen)}
         streakDays={student.streakDays || 7}
+        currentUser={authSession?.user || student}
+        isAuthenticated={isUserAuthenticated}
+        onLogout={handleLogout}
+        onOpenLogin={() => setActiveTab('login')}
       />
 
       {/* Notifications Drawer */}
@@ -428,6 +441,33 @@ export default function App() {
 
       {/* Main Page Views */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+
+        {/* Guest Mode Notice Banner */}
+        {!isUserAuthenticated && activeTab !== 'login' && activeTab !== 'home' && (
+          <div className="mb-6 p-4 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900/60 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs animate-fade-in">
+            <div className="flex items-center gap-2.5 text-xs sm:text-sm text-indigo-950 dark:text-indigo-200 font-medium text-center sm:text-left">
+              <span className="px-2 py-0.5 rounded-md bg-indigo-200/80 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 text-[10px] font-extrabold uppercase tracking-wider">
+                Guest Demo
+              </span>
+              <span>You are viewing preview data. Sign in to save and sync your personal study schedule.</span>
+            </div>
+            <button
+              onClick={() => setActiveTab('login')}
+              className="px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shrink-0 shadow-sm transition-all"
+            >
+              Sign In / Register
+            </button>
+          </div>
+        )}
+
+        {/* TAB 0: LOGIN & CREATE ACCOUNT */}
+        {activeTab === 'login' && (
+          <LoginPage
+            onLogin={handleLogin}
+            onCancel={() => setActiveTab('home')}
+            initialMode="login"
+          />
+        )}
         
         {/* TAB 1: HOME */}
         {activeTab === 'home' && (
@@ -555,9 +595,16 @@ export default function App() {
             subjects={subjects}
             onUpdateProfile={(updated) => {
               setStudent(prev => ({ ...prev, ...updated }));
+              if (authSession?.user) {
+                const updatedUser = { ...authSession.user, ...updated };
+                Storage.saveAuthSession({ ...authSession, user: updatedUser });
+                setAuthSession(prev => ({ ...prev, user: updatedUser }));
+              }
               showToast("Profile updated!");
             }}
             onResetDefaultData={handleResetDefaultData}
+            onLogout={handleLogout}
+            onSwitchAccount={() => setActiveTab('login')}
           />
         )}
 

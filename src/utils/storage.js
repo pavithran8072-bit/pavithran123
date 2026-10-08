@@ -36,7 +36,8 @@ const KEYS = {
   ASSIGNMENTS: 'ai_study_planner_assignments',
   TASKS: 'ai_study_planner_tasks',
   NOTIFICATIONS: 'ai_study_planner_notifications',
-  THEME: 'ai_study_planner_theme'
+  THEME: 'ai_study_planner_theme',
+  AUTH: 'ai_study_planner_auth'
 };
 
 /**
@@ -213,6 +214,97 @@ export const Storage = {
   },
 
   /**
+   * Retrieves active authentication session from storage.
+   * Defaults to authenticated demo user to preserve existing session state.
+   * 
+   * @returns {{ isAuthenticated: boolean, user: Object|null }} Active auth session.
+   */
+  getAuthSession: () => {
+    try {
+      const data = localStorage.getItem(KEYS.AUTH);
+      if (data) return JSON.parse(data);
+      return {
+        isAuthenticated: true,
+        user: {
+          id: 'user-default-1',
+          name: initialStudentProfile.name,
+          email: initialStudentProfile.email,
+          role: initialStudentProfile.level,
+          academicGoal: initialStudentProfile.academicGoal,
+          dailyHours: initialStudentProfile.dailyHours,
+          preferredTime: initialStudentProfile.preferredTime
+        }
+      };
+    } catch (err) {
+      console.warn('[Storage] Failed to read auth session. Defaulting to active baseline.', err);
+      return {
+        isAuthenticated: true,
+        user: {
+          id: 'user-default-1',
+          name: initialStudentProfile.name,
+          email: initialStudentProfile.email,
+          role: initialStudentProfile.level,
+          academicGoal: initialStudentProfile.academicGoal,
+          dailyHours: initialStudentProfile.dailyHours,
+          preferredTime: initialStudentProfile.preferredTime
+        }
+      };
+    }
+  },
+
+  /**
+   * Persists authentication session object to localStorage.
+   * 
+   * @param {{ isAuthenticated: boolean, user: Object|null }} session
+   */
+  saveAuthSession: (session) => {
+    try {
+      localStorage.setItem(KEYS.AUTH, JSON.stringify(session));
+    } catch (err) {
+      console.error('[Storage] Error persisting auth session:', err);
+    }
+  },
+
+  /**
+   * Authenticates user and persists session.
+   * 
+   * @param {Object} userData - User credentials and profile attributes.
+   * @returns {{ isAuthenticated: boolean, user: Object }}
+   */
+  login: (userData) => {
+    try {
+      const session = {
+        isAuthenticated: true,
+        user: userData
+      };
+      localStorage.setItem(KEYS.AUTH, JSON.stringify(session));
+      return session;
+    } catch (err) {
+      console.error('[Storage] Error saving login session:', err);
+      return { isAuthenticated: false, user: null };
+    }
+  },
+
+  /**
+   * Logs out user, invalidating session.
+   * 
+   * @returns {{ isAuthenticated: boolean, user: null }}
+   */
+  logout: () => {
+    try {
+      const session = {
+        isAuthenticated: false,
+        user: null
+      };
+      localStorage.setItem(KEYS.AUTH, JSON.stringify(session));
+      return session;
+    } catch (err) {
+      console.error('[Storage] Error saving logout state:', err);
+      return { isAuthenticated: false, user: null };
+    }
+  },
+
+  /**
    * Hard resets application state back to pristine demo data.
    * Cleanses corrupted or incompatible schemas during emergency recovery from ErrorBoundary.
    * 
@@ -225,6 +317,18 @@ export const Storage = {
       localStorage.setItem(KEYS.ASSIGNMENTS, JSON.stringify(initialAssignments));
       localStorage.setItem(KEYS.TASKS, JSON.stringify(initialTodayTasks));
       localStorage.setItem(KEYS.NOTIFICATIONS, JSON.stringify(initialNotifications));
+      localStorage.setItem(KEYS.AUTH, JSON.stringify({
+        isAuthenticated: true,
+        user: {
+          id: 'user-default-1',
+          name: initialStudentProfile.name,
+          email: initialStudentProfile.email,
+          role: initialStudentProfile.level,
+          academicGoal: initialStudentProfile.academicGoal,
+          dailyHours: initialStudentProfile.dailyHours,
+          preferredTime: initialStudentProfile.preferredTime
+        }
+      }));
       console.info('[Storage] Successfully sanitized local storage and hydrated default baseline.');
     } catch (err) {
       console.error('[Storage] Failed to execute atomic resetToDefault:', err);
