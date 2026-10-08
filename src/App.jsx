@@ -1,3 +1,25 @@
+/**
+ * @file App.jsx
+ * @description Root Application Controller & State Orchestration Layer.
+ * 
+ * Orchestrates:
+ * 1. Reactive State Management:
+ *    - Student Profile (daily hours, exam goal, time preferences)
+ *    - Enrolled Subjects & Syllabi (progress, marks, difficulty, exam dates)
+ *    - Assignments & Deadlines
+ *    - Scheduled Timetable Tasks (study blocks, revision sessions, breaks)
+ *    - Notifications & Urgency Feed
+ * 2. Automated Persistence & Hydration:
+ *    - Syncs state changes to window.localStorage via Storage abstraction.
+ *    - Automatic dark/light theme toggling and class injection on documentElement.
+ * 3. Dynamic Re-planning Pipeline:
+ *    - Trigger-based schedule readjustments (Missed sessions, shifted exams, early topic completions, urgent assignments).
+ * 4. Modal & View Navigation Routing:
+ *    - Primary tabs ('home', 'planner', 'subjects', 'progress', 'assistant', 'profile')
+ *    - Sub-views ('today' vs 'calendar')
+ *    - Modals (PlanGeneratorModal, PomodoroTimer, TaskModal, NotificationsDrawer)
+ */
+
 import React, { useState, useEffect } from 'react';
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
@@ -36,10 +58,10 @@ import { getDateOffset } from './utils/dateHelpers';
 import confetti from 'canvas-confetti';
 
 export default function App() {
-  // Theme state
+  // Theme state: reads persisted preference or defaults to light
   const [isDarkMode, setIsDarkMode] = useState(() => Storage.getTheme() === 'dark');
 
-  // Active Tab
+  // Active Navigation Tab ('home' | 'planner' | 'subjects' | 'progress' | 'assistant' | 'profile')
   const [activeTab, setActiveTab] = useState('home');
 
   // Core Data
@@ -174,7 +196,16 @@ export default function App() {
     showToast(`Focusing on ${subject.name}`);
   };
 
-  // Dynamic Re-planning Simulations
+  // ========================================================
+  // Dynamic Re-planning Simulations & Reactive Triggers
+  // Illustrates real-time adaptation engine behavior
+  // ========================================================
+
+  /**
+   * Simulation 1: Missed Session Recovery
+   * Marks current active uncompleted task as missed and schedules recovery notes.
+   * Generates a real-time notification informing the student of timetable rebalancing.
+   */
   const handleSimulateMissedSession = () => {
     const uncompleted = tasks.find(t => !t.isBreak && !t.completed);
     if (uncompleted) {
@@ -194,6 +225,11 @@ export default function App() {
     }
   };
 
+  /**
+   * Simulation 2: Exam Date Shift (High Proximity Urgency)
+   * Simulates moving an exam (e.g. Mathematics) to 3 days remaining.
+   * Automatically invokes generateSchedule to regenerate and prioritize high-stakes subject blocks.
+   */
   const handleSimulateExamChange = () => {
     // Push Mathematics exam closer: 3 days remaining
     const updatedSubjects = subjects.map(s => {
@@ -220,6 +256,11 @@ export default function App() {
     showToast("⚡ Mathematics exam moved to 3 days! AI automatically boosted Math priority.");
   };
 
+  /**
+   * Simulation 3: Immediate Assignment Insertion
+   * Simulates sudden addition of an urgent assignment deadline.
+   * Injects a dedicated 45-minute buffer block directly into today's evening schedule.
+   */
   const handleSimulateNewAssignment = () => {
     const newAsg = {
       id: `asg-${Date.now()}`,
@@ -246,6 +287,10 @@ export default function App() {
     showToast(`New assignment added! Dedicated 45m prep block scheduled.`);
   };
 
+  /**
+   * Simulation 4: Early Task Finish (Positive Reinforcement)
+   * Marks active task as finished early and awards a bonus flag and celebratory confetti.
+   */
   const handleSimulateEarlyFinish = () => {
     const activeStudyTask = tasks.find(t => !t.isBreak && !t.completed);
     if (activeStudyTask) {

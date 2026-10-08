@@ -3,17 +3,39 @@ import { AlertTriangle, RefreshCw, RotateCcw, ChevronDown, ChevronUp, ShieldAler
 import { Storage } from '../../utils/storage';
 
 /**
- * ErrorBoundary Component
+ * @class ErrorBoundary
+ * @extends React.Component
  * 
- * Catches JavaScript errors anywhere in its child component tree, logs the errors,
- * and displays a resilient, student-friendly fallback UI instead of crashing the application.
+ * @description
+ * Enterprise-grade React Error Boundary component designed to intercept unhandled JavaScript
+ * runtime exceptions anywhere within its downstream component tree.
  * 
- * Provides:
- * 1. Automatic state recovery options (Re-render, Hard Reload, Reset to Default Data)
- * 2. Detailed diagnostics disclosure (Error message and Component Stack Trace)
- * 3. Graceful degradation without data loss
+ * Architectural Role:
+ * - Prevents complete application unmounting (white-screen-of-death) during runtime failures.
+ * - Captures stack traces, error messages, and React component hierarchies.
+ * - Provides graceful student-centric recovery flows without compromising unaffected data.
+ * - Offers collapsible technical telemetry disclosure for development and support auditing.
+ * 
+ * React Lifecycle Methods:
+ * 1. static getDerivedStateFromError(error):
+ *    - Pure function invoked during the render phase.
+ *    - Updates component state synchronously so the next render displays the fallback UI.
+ * 2. componentDidCatch(error, errorInfo):
+ *    - Invoked during the commit phase for side-effects (e.g. logging to Sentry, Datadog, or analytics).
+ *    - Receives the raw error and component hierarchy stack trace.
+ * 
+ * Fallback Recovery Actions:
+ * - "Try Again" (handleResetState): Resets boundary state to false, triggering a soft re-render of the child tree.
+ * - "Reset to Demo Data" (handleResetDataAndReload): Invokes Storage.resetToDefault() to purge any corrupted localStorage
+ *   payloads that may have triggered the crash, then initiates a full browser reload.
  */
 export default class ErrorBoundary extends React.Component {
+  /**
+   * Initializes boundary state with clean error parameters.
+   * @param {Object} props - React component props
+   * @param {React.ReactNode} [props.fallback] - Optional custom fallback component
+   * @param {React.ReactNode} props.children - Enclosed child component hierarchy
+   */
   constructor(props) {
     super(props);
     this.state = {
@@ -24,21 +46,38 @@ export default class ErrorBoundary extends React.Component {
     };
   }
 
+  /**
+   * Static lifecycle hook triggered immediately after an error is thrown in a child component.
+   * Renders fallback UI synchronously.
+   * 
+   * @param {Error} error - The uncaught JavaScript error
+   * @returns {{ hasError: boolean, error: Error }} State mutation object
+   */
   static getDerivedStateFromError(error) {
-    // Update state so the next render will show the fallback UI.
     return { hasError: true, error };
   }
 
+  /**
+   * Commit phase lifecycle hook for logging and telemetry dispatch.
+   * 
+   * @param {Error} error - The uncaught error
+   * @param {{ componentStack: string }} errorInfo - React component stack trace identifying the failed component
+   */
   componentDidCatch(error, errorInfo) {
-    // Catch errors in any components below and re-render with error message
     this.setState({
       error,
       errorInfo
     });
-    // Can also log error to an external logging service (e.g. Sentry)
+
+    // Production Telemetry Hook:
+    // In production environments, this can forward errors to Sentry, LogRocket, or OpenTelemetry
     console.error('ErrorBoundary caught an unhandled error:', error, errorInfo);
   }
 
+  /**
+   * Soft Recovery Strategy:
+   * Clears the boundary's error state, allowing React to attempt re-rendering the children hierarchy.
+   */
   handleResetState = () => {
     this.setState({
       hasError: false,
@@ -48,6 +87,11 @@ export default class ErrorBoundary extends React.Component {
     });
   };
 
+  /**
+   * Hard Reset & Sanitization Strategy:
+   * Cleanses potentially corrupted localStorage data via Storage.resetToDefault()
+   * and performs a full browser reload to restore clean deterministic state.
+   */
   handleResetDataAndReload = () => {
     Storage.resetToDefault();
     window.location.reload();
@@ -55,12 +99,17 @@ export default class ErrorBoundary extends React.Component {
 
   render() {
     if (this.state.hasError) {
+      // Allow custom fallback override if passed via props
       if (this.props.fallback) {
         return this.props.fallback;
       }
 
       return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-4">
+        <div 
+          role="alert" 
+          aria-live="assertive"
+          className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-4"
+        >
           <div className="max-w-xl w-full bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-rose-200 dark:border-rose-900/60 p-6 sm:p-8 space-y-6">
             
             {/* Header Icon & Title */}
@@ -91,6 +140,7 @@ export default class ErrorBoundary extends React.Component {
                 type="button"
                 onClick={() => this.setState({ showDetails: !this.state.showDetails })}
                 className="flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
+                aria-expanded={this.state.showDetails}
               >
                 <span>{this.state.showDetails ? 'Hide' : 'View'} Technical Diagnostics</span>
                 {this.state.showDetails ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
